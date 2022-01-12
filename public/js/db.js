@@ -8,9 +8,9 @@ function newRecord(record) {
   store.add(record);
 }
 
-request.onupgradeneeded = function (event) {
+request.onupgradeneeded = function(event) {
   const db = event.target.result;
-  db.createObjectStore("pending", { autoIncrement: true });
+  db.createObjectStore('new_budget', { autoIncrement: true });
 };
 
 request.onsuccess = function (event) {
