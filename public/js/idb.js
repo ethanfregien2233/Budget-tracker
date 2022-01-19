@@ -20,7 +20,7 @@ request.onupgradeneeded = ({target}) => {
 };
 
 request.onerror = (event) => {
-    console.log("Something went wrong!" + event.target.errorCode);
+    console.log("Whoopsie" + event.target.errorCode);
 }
 
 function saveRecord (record) {
@@ -29,7 +29,7 @@ function saveRecord (record) {
     store.add(record);
 };
 
-function checkDatabase () {
+function checkData () {
     const transaction = db.transaction([ "Pending" ], "readwrite");
     const store = transaction.objectStore("Pending");
 
@@ -55,4 +55,4 @@ function checkDatabase () {
     }
 };
 
-window.addEventListener("online", checkDatabase);
+window.addEventListener("online", checkData);
