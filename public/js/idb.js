@@ -1,59 +1,58 @@
+const indexedDB = window.indexedDB || window.mozIndexedDB || window.msIndexedDB;
+
 let db;
-const request = indexedDB.open("budget", 1);
 
-function newRecord(record) {
-  const transaction = db.transaction(["loading"], "readwrite");
-  const store = transaction.objectStore("loading");
+const request = indexedDB.open("budget_db", 1);
 
-  store.add(record);
-}
-
-request.onupgradeneeded = function(event) {
-  const db = event.target.result;
-  db.createObjectStore('new_budget', { autoIncrement: true });
-};
-
-request.onsuccess = function (event) {
-  db = event.target.result;
-
-  
-  if (navigator.onLine) {
-    checkDB();
-  }
-};
-
-request.onerror = function (event) {
-  console.log("Uh oh " + event.target.errorCode);
-};
-
-function checkDB() {
-  const transaction = db.transaction(["loading"], "readwrite");
-  const store = transaction.objectStore("loading");
-  const getAll = store.getAll();
-
-  getAll.onsuccess = function () {
-    if (getAll.result.length > 0) {
-      fetch("/api/transaction/bulk", {
-        method: "POST",
-        body: JSON.stringify(getAll.result),
-        headers: {
-          Accept: "application/json, text/plain, */*",
-          "Content-Type": "application/json"
-        }
-      })
-        .then(response => response.json())
-        .then(() => {
-          const transaction = db.transaction(["loading"], "readwrite");
-          const store = transaction.objectStore("loading");
-          store.clear();
-        });
+request.onsuccess = ({target}) => {
+    db = target.result;
+    console.log(db);
+    if (navigator.onLine) {
+        checkDatabase ();
     }
-  };
-}
-function deleteLoading() {
-  const transaction = db.transaction(["loading"], "readwrite");
-  const store = transaction.objectStore("loading");
-  store.clear();
+};
+
+request.onupgradeneeded = ({target}) => {
+    let db = target.result;
+    db.createObjectStore("Pending", {
+        autoIncrement: true
+    });
+};
+
+request.onerror = (event) => {
+    console.log("Something went wrong!" + event.target.errorCode);
 }
 
-window.addEventListener("online", checkDB); 
+function saveRecord (record) {
+    const transaction = db.transaction([ "Pending" ], "readwrite");
+    const store = transaction.objectStore("Pending");
+    store.add(record);
+};
+
+function checkDatabase () {
+    const transaction = db.transaction([ "Pending" ], "readwrite");
+    const store = transaction.objectStore("Pending");
+
+    const getAll = store.getAll();
+    getAll.onsuccess = () => {
+        if (getAll.result.length > 0) {
+            fetch("/api/transaction/bulk", {
+                method: "POST",
+                body: JSON.stringify(getAll.result),
+                headers: {
+                    Accept: "application/json, text/plain, */*", 
+                    "Content-Type": "application/json"
+                }
+            }).then(response => {
+                return response.json();
+            }).then(() => {
+                const transaction = db.transaction([ "Pending" ], "readwrite");
+                const store = transaction.objectStore("Pending");
+
+                store.clear();
+            })
+        }
+    }
+};
+
+window.addEventListener("online", checkDatabase);

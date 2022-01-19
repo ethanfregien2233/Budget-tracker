@@ -1,69 +1,68 @@
-const FILES_TO_CACHE = [
-    "/",
-    "/index.html",
-    "index.js", 
-    "/db.js",
-    "/style.css"
-];
+let siteCache = "site-cache-v1";
+let dataCache = "data-cache-v1";
 
-const CACHE_NAME = "static-cache-v2";
-const DATA_CACHE_NAME = "data-cache-v1";
+const cacheURL = [
+    "./js/idb.js",
+    "./js/index.js",
+    "./manifest.json",
+    "./css/styles.css",
+    "./index.html",
+    './icons/icon-72x72.png',
+    './icons/icon-96x96.png',
+    './icons/icon-128x128.png',
+    './icons/icon-144x144.png',
+    './icons/icon-152x152.png',
+    './icons/icon-192x192.png',
+    './icons/icon-384x384.png',
+    './icons/icon-512x512.png'
+]
 
-self.addEventListener("install", function(evt) {
-  evt.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      console.log("Your files were pre cached");
-      return cache.addAll(FILES_TO_CACHE);
-    })
-  );
-
-  self.skipWaiting();
-});
-
-self.addEventListener("activate", function(evt) {
-  evt.waitUntil(
-    caches.keys().then(keyList => {
-      return Promise.all(
-        keyList.map(key => {
-          if (key !== CACHE_NAME && key !== DATA_CACHE_NAME) {
-            console.log("Removing cache data", key);
-            return caches.delete(key);
-          }
+self.addEventListener('install', function(evt) {
+    evt.waitUntil(
+        caches.open(siteCache).then(cache => {
+            console.log('Your files were pre-cached successfully!');
+            return cache.addAll(cacheURL);
         })
-      );
-    })
-  );
-
-  self.clients.claim();
+    );
+    
+    self.skipWaiting();
 });
 
-
-self.addEventListener("fetch", evt => {
-    if(evt.request.url.includes('/api/')) {
-        console.log('[Service Worker] Fetch(data)', evt.request.url);
-
-evt.respondWith(
-                caches.open(DATA_CACHE_NAME).then(cache => {
+self.addEventListener('fetch', function(evt) {
+    if (evt.request.url.includes('/api/')) {
+        evt.respondWith(
+            caches
+            .open(dataCache)
+            .then(cache => {
                 return fetch(evt.request)
                 .then(response => {
-                    if (response.status === 200){
+                    // if the response was good, clone it and store it in the cache
+                    if (response.status === 200) {
                         cache.put(evt.request.url, response.clone());
                     }
                     return response;
                 })
                 .catch(err => {
+                    // network request failed, try to get it from the cache
                     return cache.match(evt.request);
                 });
             })
-            );
-            return;
-        }
+            .catch(err => console.log(err))
+        );
 
-evt.respondWith(
-    caches.open(CACHE_NAME).then( cache => {
-      return cache.match(evt.request).then(response => {
-        return response || fetch(evt.request);
-      });
-    })
-  );
-}); 
+        return;
+    }
+    
+    evt.respondWith(
+        fetch(evt.request).catch(function() {
+            return caches.match(evt.request).then(function(response) {
+                if (response) {
+                    return response;
+                } else if (evt.request.headers.get('accept').includes('text/html')) {
+                    // return the cached homepage for all requests for html pages
+                    return caches.match('/');
+                }
+            });
+        })
+    );
+});
